@@ -151,6 +151,18 @@ client.on('message', async (msg) => {
     estado.ultimaActividad = new Date().toISOString();
     estado.mensajesHoy++;
 
+    // Registrar conversación en log (no bloquea el flujo)
+    fetch('http://localhost:3001/api/conversaciones/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        numero,
+        nombre: (await msg.getContact().catch(() => null))?.pushname ?? null,
+        estado: obtenerSesion(numero)?.estado ?? 'NUEVO',
+        ultimo_mensaje: texto.substring(0, 100),
+      }),
+    }).catch(() => {});
+
     // ── FILTRO: Solo contactos en agenda ──────────────────────────────────
     const contacto = await msg.getContact();
     if (!contacto.isMyContact) {
@@ -228,7 +240,7 @@ client.on('message', async (msg) => {
           }
         } else if (t === '4') {
           actualizarSesion(numero, { estado: 'FAQ' });
-          await msg.reply(textoMenuFAQ());
+          await msg.reply(await textoMenuFAQ());
         } else if (t === '0') {
           actualizarSesion(numero, { estado: 'ESPERA_VENDEDOR' });
           await msg.reply(
@@ -393,16 +405,12 @@ client.on('message', async (msg) => {
 
       // ── Estado: FAQ — preguntas frecuentes ───────────────────────────────────
       case 'FAQ': {
-        // Verificar si eligió volver al menú
-        const respFAQ = responderFAQ(t);
+        const respFAQ = await responderFAQ(t);
         if (respFAQ) {
           await msg.reply(respFAQ + '\n\n_Escribe otro número o *menu* para volver al inicio._');
-        } else if (['1','2','3','4','5','6'].includes(t)) {
-          await msg.reply(`Opción no disponible. ${textoMenuFAQ()}`);
         } else {
-          await msg.reply(
-            `No encontré respuesta para eso. 🤔\n\n${textoMenuFAQ()}`
-          );
+          const menuFAQ = await textoMenuFAQ();
+          await msg.reply(`No encontré respuesta para eso. 🤔\n\n${menuFAQ}`);
         }
         break;
       }

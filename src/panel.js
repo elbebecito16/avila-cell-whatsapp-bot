@@ -12,6 +12,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// CORS — permite que el CRM (localhost:3000) consulte la API del bot
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 // ─── Bot status ───────────────────────────────────────────────────────────────
 app.get('/api/bot-status', (req, res) => res.json({
   conectado: estado.conectado,
@@ -180,6 +189,62 @@ app.get('/api/estadisticas', async (req, res) => {
     noEncontradas: noEncontradas.n, hoy: hoy.n,
     iaConsultas: parseInt(iaConsultas?.valor || 0),
   });
+});
+
+// ─── FAQ items (CRUD) ────────────────────────────────────────────────────────
+app.get('/api/faq', async (req, res) => {
+  res.json(await db.all('SELECT * FROM faq_items ORDER BY orden ASC'));
+});
+
+app.post('/api/faq', async (req, res) => {
+  const { titulo, keywords, respuesta, orden, activo } = req.body;
+  if (!titulo || !respuesta) return res.status(400).json({ error: 'titulo y respuesta requeridos' });
+  const maxOrden = await db.get('SELECT COALESCE(MAX(orden),0)+1 as n FROM faq_items');
+  const r = await db.run(
+    'INSERT INTO faq_items (orden, titulo, keywords, respuesta, activo) VALUES (?,?,?,?,?)',
+    [orden ?? maxOrden.n, titulo, keywords ?? '', respuesta, activo ?? 1]
+  );
+  res.json({ id: r.lastInsertRowid, ok: true });
+});
+
+app.put('/api/faq/:id', async (req, res) => {
+  const { titulo, keywords, respuesta, orden, activo } = req.body;
+  await db.run(
+    `UPDATE faq_items SET titulo=?, keywords=?, respuesta=?, orden=?, activo=?, updated_at=datetime('now') WHERE id=?`,
+    [titulo, keywords ?? '', respuesta, orden, activo ?? 1, req.params.id]
+  );
+  res.json({ ok: true });
+});
+
+app.delete('/api/faq/:id', async (req, res) => {
+  await db.run('DELETE FROM faq_items WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// ─── Log de conversaciones ────────────────────────────────────────────────────
+app.get('/api/conversaciones', async (req, res) => {
+  const rows = await db.all(
+    'SELECT * FROM conversaciones_log ORDER BY updated_at DESC LIMIT 100'
+  );
+  res.json(rows);
+});
+
+// Endpoint interno que usa bot.js para actualizar el log
+app.post('/api/conversaciones/log', async (req, res) => {
+  const { numero, nombre, estado, ultimo_mensaje } = req.body;
+  await db.run(
+    `INSERT INTO conversaciones_log (numero, nombre, estado, ultimo_mensaje, updated_at)
+     VALUES (?,?,?,?,datetime('now'))
+     ON CONFLICT(numero) DO UPDATE SET nombre=excluded.nombre, estado=excluded.estado,
+     ultimo_mensaje=excluded.ultimo_mensaje, updated_at=excluded.updated_at`,
+    [numero, nombre ?? null, estado ?? null, ultimo_mensaje ?? null]
+  ).catch(() =>
+    db.run(
+      `UPDATE conversaciones_log SET nombre=?, estado=?, ultimo_mensaje=?, updated_at=datetime('now') WHERE numero=?`,
+      [nombre, estado, ultimo_mensaje, numero]
+    )
+  );
+  res.json({ ok: true });
 });
 
 // ─── Notificaciones WhatsApp (llamado por el CRM) ────────────────────────────
