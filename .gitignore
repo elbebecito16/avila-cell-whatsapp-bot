@@ -1,0 +1,25 @@
+# Dependencias
+node_modules/
+
+# Sesión de WhatsApp (NUNCA subir — es el acceso a tu WhatsApp)
+session/
+.wwebjs_cache/
+.wwebjs_auth/
+
+# Base de datos y datos locales de cada sucursal
+data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Subidas y logs
+uploads/
+*-log.txt
+*-err.txt
+npm-log.txt
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.local
+.env

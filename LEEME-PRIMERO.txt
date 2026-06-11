@@ -1,0 +1,31 @@
+============================================================
+   BOT DE WHATSAPP - AVILA CELL  (Guia para la sucursal)
+============================================================
+
+>> PRIMERA VEZ EN ESTA PC (instalacion)
+   1. Doble clic en   INSTALAR-BOT
+   2. Sigue los pasos en pantalla:
+        - Instala Node.js si te lo pide (boton verde LTS)
+        - Espera a que instale las dependencias
+        - Responde S para que arranque solo al encender la PC
+   3. Cuando salga el codigo QR, escanealo con el WhatsApp
+      del telefono de la sucursal:
+        WhatsApp > Dispositivos vinculados > Vincular dispositivo
+   * Esto se hace UNA SOLA VEZ.
+
+>> USO DIARIO (encender el bot)
+   - Doble clic en el icono del Escritorio "Iniciar Bot Avila"
+     (o en el archivo INICIAR-BOT)
+   - Si configuraste el inicio automatico, el bot arranca solo
+     cuando enciendes la PC. No tienes que hacer nada.
+
+>> PANEL DE ADMINISTRACION (precios, productos)
+   - Abre el navegador en:  http://localhost:3001
+
+>> APAGAR EL BOT
+   - Cierra la ventana negra del bot.
+
+>> SI ALGO FALLA
+   - Vuelve a correr INSTALAR-BOT.
+   - Verifica que el telefono tenga internet y WhatsApp abierto.
+============================================================

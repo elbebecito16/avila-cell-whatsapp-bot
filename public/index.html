@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avila Cell — Panel Bot WhatsApp</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+header { background: #25d366; color: white; padding: 14px 24px; display: flex; align-items: center; gap: 14px; }
+header h1 { font-size: 20px; font-weight: 700; }
+.bot-badge { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; background: rgba(0,0,0,.15); padding: 6px 14px; border-radius: 20px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #ff4444; display: inline-block; }
+.dot.on { background: #00ff88; }
+.tabs { display: flex; background: white; border-bottom: 2px solid #eee; padding: 0 24px; overflow-x: auto; }
+.tab { padding: 14px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.tab.active { color: #25d366; border-color: #25d366; }
+.content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+.stat-card .num { font-size: 34px; font-weight: 800; color: #25d366; }
+.stat-card .label { font-size: 12px; color: #777; margin-top: 4px; }
+.card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.07); margin-bottom: 20px; }
+.card h2 { font-size: 15px; font-weight: 700; margin-bottom: 16px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+input[type=text], input[type=number], input[type=time], select, textarea {
+  padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; }
+input:focus, select:focus, textarea:focus { border-color: #25d366; }
+.btn { padding: 9px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn:hover { opacity: 0.85; }
+.btn-green { background: #25d366; color: white; }
+.btn-blue { background: #0088cc; color: white; }
+.btn-red { background: #e74c3c; color: white; }
+.btn-gray { background: #eee; color: #555; }
+.btn-orange { background: #e67e22; color: white; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f8f9fa; padding: 9px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: #888; border-bottom: 1px solid #eee; }
+td { padding: 9px 12px; border-bottom: 1px solid #f4f4f4; }
+tr:hover td { background: #fafafa; }
+.badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-green { background: #e6f9ee; color: #1a8a4a; }
+.badge-red { background: #fdecea; color: #c0392b; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: center; justify-content: center; }
+.modal-bg.show { display: flex; }
+.modal { background: white; border-radius: 14px; padding: 28px; width: 500px; max-width: 96vw; max-height: 90vh; overflow-y: auto; }
+.modal h3 { margin-bottom: 18px; font-size: 17px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-row.full { grid-template-columns: 1fr; }
+label { font-size: 12px; color: #555; display: block; margin-bottom: 4px; font-weight: 600; }
+.form-row input, .form-row select, .form-row textarea { width: 100%; }
+.modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.no-enc { background: #fff9e6; border-left: 4px solid #f39c12; padding: 12px 16px; border-radius: 8px; margin-bottom: 10px; }
+.no-enc .msg { font-weight: 600; font-size: 14px; }
+.no-enc .meta { font-size: 12px; color: #888; margin-top: 3px; }
+section { display: none; }
+section.active { display: block; }
+
+/* QR Panel */
+.qr-box { text-align: center; padding: 30px 20px; }
+.qr-box img { border: 3px solid #25d366; border-radius: 12px; max-width: 260px; }
+.qr-box p { margin-top: 14px; color: #555; font-size: 14px; }
+.status-connected { background: #e6f9ee; border: 2px solid #25d366; border-radius: 12px; padding: 20px; text-align: center; }
+.status-connected h3 { color: #1a8a4a; font-size: 18px; }
+.status-connected p { color: #555; font-size: 13px; margin-top: 6px; }
+
+/* Config */
+.config-group { margin-bottom: 20px; }
+.config-group label { margin-bottom: 6px; }
+.config-group textarea { width: 100%; min-height: 70px; resize: vertical; }
+.config-group input[type=text], .config-group input[type=time] { width: 100%; }
+.horario-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; inset: 0; background: #ccc; border-radius: 24px; transition: .3s; cursor: pointer; }
+.slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .3s; }
+input:checked + .slider { background: #25d366; }
+input:checked + .slider:before { transform: translateX(20px); }
+.alert-ok { background: #e6f9ee; color: #1a8a4a; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; display: none; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:24px">📱</span>
+  <h1>Avila Cell — Bot WhatsApp</h1>
+  <div class="bot-badge">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusTxt">Verificando...</span>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active"  onclick="showTab('dashboard')">🏠 Dashboard</div>
+  <div class="tab"         onclick="showTab('bot')">🤖 Bot / QR</div>
+  <div class="tab"         onclick="showTab('configuracion')">⚙️ Configuración</div>
+  <div class="tab"         onclick="showTab('productos')">📦 Productos</div>
+  <div class="tab"         onclick="showTab('no-encontradas')">❓ Sin respuesta <span id="badge-nenc"></span></div>
+  <div class="tab"         onclick="showTab('pedidos')">🛒 Pedidos <span id="badge-pedidos"></span></div>
+  <div class="tab"         onclick="showTab('aprendizaje')">🧠 Aprendizaje</div>
+</div>
+
+<div class="content">
+
+<!-- ══════════ DASHBOARD ══════════ -->
+<section id="tab-dashboard" class="active">
+  <div class="stats">
+    <div class="stat-card"><div class="num" id="s-total">—</div><div class="label">Consultas totales</div></div>
+    <div class="stat-card"><div class="num" id="s-respondidas">—</div><div class="label">Respondidas por bot</div></div>
+    <div class="stat-card"><div class="num" id="s-hoy">—</div><div class="label">Hoy</div></div>
+    <div class="stat-card"><div class="num" id="s-nenc" style="color:#e67e22">—</div><div class="label">Sin respuesta pendientes</div></div>
+    <div class="stat-card"><div class="num" id="s-ia" style="color:#8e44ad">—</div><div class="label">🤖 Consultas a DeepSeek</div></div>
+  </div>
+  <div class="card">
+    <h2>¿Cómo funciona?</h2>
+    <p style="font-size:14px;color:#555;line-height:1.7">
+      El bot recibe mensajes de WhatsApp, identifica el producto que busca el cliente, busca el precio en la base de datos y responde automáticamente.<br><br>
+      <strong>El bot solo responde precio y disponibilidad.</strong> El vendedor continúa la conversación para cerrar la venta, coordinar entrega y facturar.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════ BOT / QR ══════════ -->
+<section id="tab-bot">
+  <div class="card" id="bot-conectado-card" style="display:none">
+    <h2>Estado del Bot</h2>
+    <div class="status-connected">
+      <h3>✅ Bot Conectado</h3>
+      <p>Número: <strong id="bot-numero">—</strong></p>
+      <p style="margin-top:6px">El bot está recibiendo mensajes y respondiendo automáticamente.</p>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-red" onclick="desconectar()">Desconectar bot</button>
+    </div>
+  </div>
+
+  <div class="card" id="bot-qr-card" style="display:none">
+    <h2>Conectar WhatsApp</h2>
+    <div class="qr-box">
+      <img id="qr-img" src="" alt="QR Code">
+      <p>📱 Abre WhatsApp en tu teléfono<br>→ <strong>Dispositivos vinculados</strong><br>→ <strong>Vincular un dispositivo</strong><br>→ Escanea este código</p>
+      <button class="btn btn-blue" style="margin-top:16px" onclick="actualizarQR()">🔄 Actualizar QR</button>
+    </div>
+  </div>
+
+  <div class="card" id="bot-espera-card">
+    <h2>Estado del Bot</h2>
+    <div style="text-align:center;padding:30px;color:#888">
+      <div style="font-size:40px">⏳</div>
+      <p style="margin-top:12px;font-size:14px">Iniciando el bot...<br>Abre la ventana de terminal donde corriste <strong>INICIAR-BOT.bat</strong> para ver el progreso.</p>
+      <button class="btn btn-green" style="margin-top:16px" onclick="verificarEstadoBot()">🔄 Verificar estado</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Instrucciones para iniciar el bot</h2>
+    <ol style="font-size:14px;color:#555;line-height:2;padding-left:20px">
+      <li>Haz doble clic en <strong>INICIAR-BOT.bat</strong> en la carpeta del proyecto</li>
+      <li>Espera a que aparezca el código QR (en la terminal o aquí arriba)</li>
+      <li>Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo</li>
+      <li>Escanea el código QR</li>
+      <li>¡Listo! El bot comenzará a responder automáticamente</li>
+    </ol>
+    <p style="margin-top:12px;font-size:12px;color:#aaa">📁 Ruta del proyecto: C:\Users\AVILACELL\avila-cell-whatsapp-bot</p>
+  </div>
+</section>
+
+<!-- ══════════ CONFIGURACIÓN ══════════ -->
+<section id="tab-configuracion">
+  <form onsubmit="guardarConfig(event)">
+
+    <div class="card">
+      <h2>🤖 Mensajes del Bot</h2>
+
+      <div class="config-group">
+        <label>Mensaje cuando SÍ encuentra el producto (una opción)</label>
+        <textarea name="saludo" id="cfg-saludo" placeholder="¡Hola! Sí, tenemos disponible:"></textarea>
+      </div>
+      <div class="config-group">
+        <label>Mensaje de cierre (después del precio)</label>
+        <textarea name="cierre" id="cfg-cierre" placeholder="Un vendedor continuará con usted..."></textarea>
+      </div>
+      <div class="config-group">
+        <label>Mensaje cuando hay varias opciones</label>
+        <textarea name="multiples" id="cfg-multiples" placeholder="Díganos cuál necesita..."></textarea>
+      </div>
+      <div class="config-group">
+        <label>Mensaje cuando NO encuentra el producto</label>
+        <textarea name="no_encontrado" id="cfg-no_encontrado" placeholder="Gracias por escribirnos..."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🕐 Horario de Atención</h2>
+      <div class="config-group">
+        <div class="horario-row">
+          <label class="toggle">
+            <input type="checkbox" id="cfg-horario_activo" onchange="toggleHorario(this)">
+            <span class="slider"></span>
+          </label>
+          <span style="font-size:14px;font-weight:600">Activar filtro de horario</span>
+        </div>
+        <p style="font-size:12px;color:#999;margin-top:6px">Si está activo, fuera del horario el bot responde con el mensaje de fuera de horario.</p>
+      </div>
+      <div class="config-group" id="horario-campos">
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div>
+            <label>Hora de inicio</label>
+            <input type="time" id="cfg-horario_inicio">
+          </div>
+          <div>
+            <label>Hora de cierre</label>
+            <input type="time" id="cfg-horario_fin">
+          </div>
+        </div>
+      </div>
+      <div class="config-group">
+        <label>Mensaje fuera de horario</label>
+        <textarea id="cfg-fuera_horario" placeholder="Gracias por escribirnos. Nuestro horario es..."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏪 Negocio</h2>
+      <div class="config-group">
+        <label>Nombre del negocio</label>
+        <input type="text" id="cfg-nombre_negocio" placeholder="Avila Cell">
+      </div>
+      <div class="config-group">
+        <label>Sucursal por defecto</label>
+        <select id="cfg-sucursal_defecto">
+          <option value="Santiago">Santiago</option>
+          <option value="Gurabo">Gurabo</option>
+          <option value="Navarrete">Navarrete</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:center">
+      <button type="submit" class="btn btn-green">💾 Guardar cambios</button>
+      <div class="alert-ok" id="alert-guardado">✅ Configuración guardada</div>
+    </div>
+  </form>
+</section>
+
+<!-- ══════════ PRODUCTOS ══════════ -->
+<section id="tab-productos">
+  <div class="card">
+    <div class="toolbar">
+      <input type="text" id="buscar" placeholder="Buscar producto..." style="flex:1;min-width:160px" oninput="cargarProductos()">
+      <select id="filtro-tipo" onchange="cargarProductos()">
+        <option value="">Todos los tipos</option>
+        <option>pantalla</option><option>bateria</option><option>tapa</option>
+        <option>camara</option><option>pin</option><option>flex</option>
+        <option>housing</option><option>accesorio</option><option>herramienta</option>
+      </select>
+      <select id="filtro-disp" onchange="cargarProductos()">
+        <option value="">Todos</option>
+        <option value="1">Disponibles</option>
+        <option value="0">Agotados</option>
+      </select>
+      <button class="btn btn-green" onclick="abrirModal()">+ Agregar</button>
+      <button class="btn btn-blue" onclick="exportarPlantilla()">📥 Plantilla</button>
+      <label class="btn btn-gray" style="cursor:pointer">📤 Importar Excel
+        <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
+      </label>
+    </div>
+    <div id="tabla-count" style="font-size:12px;color:#999;margin-bottom:10px"></div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr><th>Nombre</th><th>Tipo</th><th>Calidad</th><th>Precio RD$</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody id="tabla-productos"></tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ SIN RESPUESTA ══════════ -->
+<section id="tab-no-encontradas">
+  <div class="card">
+    <h2>Consultas que el bot no pudo responder</h2>
+    <p style="font-size:12px;color:#999;margin-bottom:16px">Agrega estos productos a la base de datos para que el bot los responda en el futuro.</p>
+    <div id="lista-nenc"></div>
+  </div>
+</section>
+
+<!-- ══════════ PEDIDOS ══════════ -->
+<section id="tab-pedidos">
+  <div class="stats" id="pedidos-stats">
+    <div class="stat-card"><div class="num" id="ps-pendientes" style="color:#e67e22">—</div><div class="label">Pendientes</div></div>
+    <div class="stat-card"><div class="num" id="ps-total-pendiente" style="color:#e67e22">—</div><div class="label">Total pendiente RD$</div></div>
+    <div class="stat-card"><div class="num" id="ps-facturados" style="color:#25d366">—</div><div class="label">Facturados hoy</div></div>
+    <div class="stat-card"><div class="num" id="ps-cancelados" style="color:#e74c3c">—</div><div class="label">Cancelados</div></div>
+  </div>
+  <div class="card">
+    <h2>📋 Lista de Pedidos</h2>
+    <div class="toolbar">
+      <select id="filtro-pedido-estado" onchange="cargarPedidos()">
+        <option value="">Todos los estados</option>
+        <option value="pendiente" selected>⏳ Pendientes</option>
+        <option value="facturado">✅ Facturados</option>
+        <option value="cancelado">❌ Cancelados</option>
+      </select>
+      <button class="btn btn-gray" onclick="cargarPedidos()">🔄 Actualizar</button>
+    </div>
+    <div id="tabla-pedidos-wrap" style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Cliente</th>
+            <th>Número</th>
+            <th>Productos</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-pedidos"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</div><!-- /content -->
+
+<!-- ══════════ APRENDIZAJE ══════════ -->
+<section id="tab-aprendizaje">
+  <div class="card">
+    <h2>🧠 Sinónimos aprendidos</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:16px">
+      Cuando el bot no encuentra un producto, puedes enseñarle aquí.<br>
+      <strong>Patrón:</strong> lo que escribe el cliente &nbsp;→&nbsp; <strong>Producto:</strong> lo que debe devolver.
+    </p>
+    <div class="toolbar">
+      <button class="btn btn-green" onclick="abrirModalAprendizaje()">➕ Agregar sinónimo</button>
+      <button class="btn btn-gray" onclick="cargarAprendizaje()">🔄 Actualizar</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Patrón (lo que escribe el cliente)</th>
+          <th>Producto que devuelve</th>
+          <th>Veces usado</th>
+          <th>Fecha</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tabla-aprendizaje"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>📊 Búsquedas exitosas recientes</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:16px">
+      Estas búsquedas ya funcionan bien. DeepSeek las usa como ejemplos de entrenamiento automáticamente.
+    </p>
+    <div id="lista-exitosas" style="font-size:13px"></div>
+  </div>
+</section>
+
+<!-- MODAL APRENDIZAJE -->
+<div class="modal-bg" id="modal-aprendizaje-bg" onclick="if(event.target===this)cerrarModalAprendizaje()">
+  <div class="modal" style="width:560px">
+    <h3>🧠 Enseñar al bot</h3>
+    <p style="font-size:13px;color:#666;margin-bottom:16px">
+      Define qué producto debe mostrar cuando un cliente escriba ese patrón.
+    </p>
+    <div class="form-row full">
+      <div>
+        <label>Patrón — lo que escribe el cliente</label>
+        <input type="text" id="ap-patron" placeholder="ej: a669, pantalla del note 10, screen iphone" style="width:100%">
+        <p style="font-size:11px;color:#999;margin-top:4px">Puede ser una palabra, número de modelo o frase. En minúsculas.</p>
+      </div>
+    </div>
+    <div class="form-row full" style="margin-top:12px">
+      <div>
+        <label>Buscar producto en la base de datos</label>
+        <input type="text" id="ap-buscar-prod" placeholder="Escribe para buscar..." style="width:100%" oninput="buscarProdAprendizaje()">
+      </div>
+    </div>
+    <div id="ap-resultados" style="max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:8px;margin-top:8px;display:none"></div>
+    <input type="hidden" id="ap-producto-id">
+    <div id="ap-seleccionado" style="margin-top:10px;padding:10px;background:#e6f9ee;border-radius:8px;display:none;font-size:13px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="cerrarModalAprendizaje()">Cancelar</button>
+      <button class="btn btn-green" onclick="guardarAprendizaje()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PEDIDO -->
+<div class="modal-bg" id="modal-pedido-bg" onclick="if(event.target===this)cerrarModalPedido()">
+  <div class="modal" style="width:600px">
+    <h3>Detalle del Pedido <span id="mp-id"></span></h3>
+    <div style="margin-bottom:14px">
+      <p style="font-size:13px"><strong>Cliente:</strong> <span id="mp-cliente"></span></p>
+      <p style="font-size:13px"><strong>Número:</strong> <span id="mp-numero"></span></p>
+      <p style="font-size:13px"><strong>Fecha:</strong> <span id="mp-fecha"></span></p>
+    </div>
+    <table style="margin-bottom:16px">
+      <thead><tr><th>Producto</th><th>Cant.</th><th>Precio unit.</th><th>Subtotal</th></tr></thead>
+      <tbody id="mp-productos"></tbody>
+    </table>
+    <p style="font-size:16px;font-weight:800;text-align:right;margin-bottom:16px">Total: <span id="mp-total" style="color:#25d366"></span></p>
+    <div class="form-row full">
+      <div><label>Notas del operador</label><textarea id="mp-notas" style="width:100%;min-height:60px" placeholder="Observaciones..."></textarea></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="cerrarModalPedido()">Cerrar</button>
+      <button class="btn btn-red" onclick="cambiarEstadoPedido('cancelado')">❌ Cancelar pedido</button>
+      <button class="btn btn-green" onclick="cambiarEstadoPedido('facturado')">✅ Marcar facturado</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRODUCTO -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal">
+    <h3 id="modal-titulo">Agregar Producto</h3>
+    <input type="hidden" id="f-id">
+    <div class="form-row">
+      <div><label>Código</label><input type="text" id="f-codigo" placeholder="Opcional"></div>
+      <div><label>Tipo de pieza</label>
+        <select id="f-tipo">
+          <option>pantalla</option><option>bateria</option><option>tapa</option>
+          <option>camara</option><option>pin</option><option>flex</option>
+          <option>housing</option><option>accesorio</option><option>herramienta</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row full">
+      <div><label>Nombre completo del producto</label><input type="text" id="f-nombre" placeholder="PANTALLA IPHONE 11 INCELL"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Marca</label><input type="text" id="f-marca" placeholder="Apple"></div>
+      <div><label>Calidad</label><input type="text" id="f-calidad" placeholder="Incell / OLED / Original"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Precio (RD$)</label><input type="number" id="f-precio" placeholder="1500"></div>
+      <div><label>Sucursal</label>
+        <select id="f-sucursal"><option>Santiago</option><option>Gurabo</option><option>Navarrete</option></select>
+      </div>
+    </div>
+    <div class="form-row full">
+      <div><label>Disponible</label>
+        <select id="f-disponible"><option value="1">✅ Disponible</option><option value="0">❌ Agotado</option></select>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-green" onclick="guardarProducto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Tab navigation ───────────────────────────────────────────────────────────
+const tabIds = ['dashboard','bot','configuracion','productos','no-encontradas','pedidos','aprendizaje'];
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabIds[i] === id));
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`tab-${id}`).classList.add('active');
+  if (id === 'productos') cargarProductos();
+  if (id === 'no-encontradas') cargarNoEncontradas();
+  if (id === 'bot') verificarEstadoBot();
+  if (id === 'configuracion') cargarConfig();
+  if (id === 'pedidos') { cargarPedidos(); cargarStatsPedidos(); }
+  if (id === 'aprendizaje') cargarAprendizaje();
+}
+
+// ─── Bot status ───────────────────────────────────────────────────────────────
+async function verificarEstadoBot() {
+  try {
+    const d = await fetch('/api/bot-status').then(r => r.json());
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusTxt');
+    const cardCon = document.getElementById('bot-conectado-card');
+    const cardQR  = document.getElementById('bot-qr-card');
+    const cardEsp = document.getElementById('bot-espera-card');
+
+    if (d.conectado) {
+      dot.className = 'dot on';
+      txt.textContent = '🟢 Conectado';
+      document.getElementById('bot-numero').textContent = d.numero || '—';
+      cardCon.style.display = ''; cardQR.style.display = 'none'; cardEsp.style.display = 'none';
+    } else if (d.tieneQR) {
+      dot.className = 'dot';
+      txt.textContent = '🟡 Esperando QR';
+      cardCon.style.display = 'none'; cardQR.style.display = ''; cardEsp.style.display = 'none';
+      actualizarQR();
+    } else {
+      dot.className = 'dot';
+      txt.textContent = '🔴 Desconectado';
+      cardCon.style.display = 'none'; cardQR.style.display = 'none'; cardEsp.style.display = '';
+    }
+  } catch(e) {
+    document.getElementById('statusTxt').textContent = '🔴 Sin conexión';
+  }
+}
+
+async function actualizarQR() {
+  try {
+    const d = await fetch('/api/bot-qr').then(r => r.json());
+    if (d.qr) document.getElementById('qr-img').src = d.qr;
+  } catch(e) {}
+}
+
+async function desconectar() {
+  if (!confirm('¿Desconectar el bot de WhatsApp?')) return;
+  alert('Para desconectar, cierra la ventana de INICIAR-BOT.bat y borra la carpeta /session.');
+}
+
+// ─── Estadísticas ─────────────────────────────────────────────────────────────
+async function cargarEstadisticas() {
+  const d = await fetch('/api/estadisticas').then(r => r.json());
+  document.getElementById('s-total').textContent = d.total;
+  document.getElementById('s-respondidas').textContent = d.respondidas;
+  document.getElementById('s-hoy').textContent = d.hoy;
+  document.getElementById('s-nenc').textContent = d.noEncontradas;
+  document.getElementById('s-ia').textContent   = d.iaConsultas || 0;
+  document.getElementById('badge-nenc').textContent = d.noEncontradas > 0 ? `(${d.noEncontradas})` : '';
+}
+
+// ─── Configuración ────────────────────────────────────────────────────────────
+async function cargarConfig() {
+  const cfg = await fetch('/api/config').then(r => r.json());
+  const campos = ['saludo','cierre','no_encontrado','multiples','horario_inicio','horario_fin','fuera_horario','nombre_negocio'];
+  campos.forEach(c => { const el = document.getElementById('cfg-'+c); if(el) el.value = cfg[c] || ''; });
+  const chk = document.getElementById('cfg-horario_activo');
+  chk.checked = cfg.horario_activo === '1';
+  toggleHorario(chk);
+  const sel = document.getElementById('cfg-sucursal_defecto');
+  if (sel && cfg.sucursal_defecto) sel.value = cfg.sucursal_defecto;
+}
+
+function toggleHorario(chk) {
+  document.getElementById('horario-campos').style.opacity = chk.checked ? '1' : '0.4';
+}
+
+async function guardarConfig(e) {
+  e.preventDefault();
+  const campos = ['saludo','cierre','no_encontrado','multiples','horario_inicio','horario_fin','fuera_horario','nombre_negocio'];
+  const datos = { horario_activo: document.getElementById('cfg-horario_activo').checked ? '1' : '0',
+                  sucursal_defecto: document.getElementById('cfg-sucursal_defecto').value };
+  campos.forEach(c => { const el = document.getElementById('cfg-'+c); if(el) datos[c] = el.value; });
+  await fetch('/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(datos) });
+  const alerta = document.getElementById('alert-guardado');
+  alerta.style.display = 'block';
+  setTimeout(() => alerta.style.display = 'none', 3000);
+}
+
+// ─── Productos ────────────────────────────────────────────────────────────────
+async function cargarProductos() {
+  const buscar = document.getElementById('buscar').value;
+  const tipo   = document.getElementById('filtro-tipo').value;
+  const disp   = document.getElementById('filtro-disp').value;
+  let url = '/api/productos?';
+  if (buscar) url += `buscar=${encodeURIComponent(buscar)}&`;
+  if (tipo)   url += `tipo=${tipo}&`;
+  if (disp !== '') url += `disponible=${disp}`;
+  const prods = await fetch(url).then(r => r.json());
+  document.getElementById('tabla-count').textContent = `${prods.length} productos`;
+  document.getElementById('tabla-productos').innerHTML = prods.map(p => `
+    <tr>
+      <td><strong>${p.nombre}</strong></td>
+      <td><span style="background:#f0f0f0;padding:2px 8px;border-radius:20px;font-size:11px">${p.tipo_pieza}</span></td>
+      <td>${p.calidad}</td>
+      <td><strong>RD$${Number(p.precio).toLocaleString('es-DO')}</strong></td>
+      <td><span class="badge ${p.disponible ? 'badge-green':'badge-red'}">${p.disponible ? 'Disponible':'Agotado'}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-gray" style="padding:4px 10px;font-size:11px" onclick='editarProducto(${JSON.stringify(p).replace(/'/g,"&#39;")})'>✏️</button>
+        <button class="btn btn-red"  style="padding:4px 10px;font-size:11px;margin-left:4px" onclick="eliminarProducto(${p.id})">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ─── Sin respuesta ────────────────────────────────────────────────────────────
+async function cargarNoEncontradas() {
+  const items = await fetch('/api/no-encontradas').then(r => r.json());
+  document.getElementById('lista-nenc').innerHTML = items.length === 0
+    ? '<p style="text-align:center;color:#888;padding:20px">No hay consultas pendientes 🎉</p>'
+    : items.map(i => `
+      <div class="no-enc">
+        <div class="msg">"${i.mensaje}"</div>
+        <div class="meta">📱 ${i.numero} &mdash; ${i.fecha}</div>
+        ${!i.atendida ? `
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn btn-gray" style="font-size:12px" onclick="atender(${i.id})">✅ Marcar atendida</button>
+            <button class="btn btn-blue" style="font-size:12px" onclick="ensenarBot('${i.mensaje.replace(/'/g,"\\'")}')">🧠 Enseñar al bot</button>
+          </div>` : '<span style="font-size:12px;color:#27ae60">✅ Atendida</span>'}
+      </div>`).join('');
+}
+
+async function atender(id) {
+  await fetch(`/api/no-encontradas/${id}/atender`, { method: 'PUT' });
+  cargarNoEncontradas(); cargarEstadisticas();
+}
+
+// ─── Modal producto ───────────────────────────────────────────────────────────
+function abrirModal(p = null) {
+  document.getElementById('modal-titulo').textContent = p ? 'Editar Producto' : 'Agregar Producto';
+  document.getElementById('f-id').value       = p?.id || '';
+  document.getElementById('f-codigo').value   = p?.codigo || '';
+  document.getElementById('f-nombre').value   = p?.nombre || '';
+  document.getElementById('f-marca').value    = p?.marca || '';
+  document.getElementById('f-tipo').value     = p?.tipo_pieza || 'pantalla';
+  document.getElementById('f-calidad').value  = p?.calidad || '';
+  document.getElementById('f-precio').value   = p?.precio || '';
+  document.getElementById('f-sucursal').value = p?.sucursal || 'Santiago';
+  document.getElementById('f-disponible').value = p?.disponible ?? 1;
+  document.getElementById('modal-bg').classList.add('show');
+}
+function editarProducto(p) { abrirModal(p); }
+function cerrarModal() { document.getElementById('modal-bg').classList.remove('show'); }
+
+async function guardarProducto() {
+  const id = document.getElementById('f-id').value;
+  const body = {
+    codigo:     document.getElementById('f-codigo').value,
+    nombre:     document.getElementById('f-nombre').value,
+    marca:      document.getElementById('f-marca').value,
+    tipo_pieza: document.getElementById('f-tipo').value,
+    calidad:    document.getElementById('f-calidad').value,
+    precio:     parseInt(document.getElementById('f-precio').value),
+    sucursal:   document.getElementById('f-sucursal').value,
+    disponible: parseInt(document.getElementById('f-disponible').value),
+  };
+  const url = id ? `/api/productos/${id}` : '/api/productos';
+  await fetch(url, { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  cerrarModal(); cargarProductos();
+}
+
+async function eliminarProducto(id) {
+  if (!confirm('¿Eliminar este producto?')) return;
+  await fetch(`/api/productos/${id}`, { method: 'DELETE' });
+  cargarProductos();
+}
+
+async function importarExcel(input) {
+  const fd = new FormData(); fd.append('archivo', input.files[0]);
+  const r = await fetch('/api/importar', { method: 'POST', body: fd }).then(r => r.json());
+  alert(`✅ ${r.importados} productos importados`);
+  cargarProductos();
+}
+function exportarPlantilla() { window.open('/api/plantilla'); }
+
+// ─── Pedidos ──────────────────────────────────────────────────────────────────
+let pedidoActual = null;
+
+async function cargarStatsPedidos() {
+  const d = await fetch('/api/pedidos/stats').then(r => r.json());
+  document.getElementById('ps-pendientes').textContent     = d.pendientes.n;
+  document.getElementById('ps-total-pendiente').textContent = `${Number(d.pendientes.total).toLocaleString('es-DO')}`;
+  document.getElementById('ps-facturados').textContent     = d.facturados.n;
+  document.getElementById('ps-cancelados').textContent     = d.cancelados.n;
+  const badge = document.getElementById('badge-pedidos');
+  badge.textContent = d.pendientes.n > 0 ? `(${d.pendientes.n})` : '';
+  badge.style.color = '#e67e22';
+}
+
+async function cargarPedidos() {
+  const est = document.getElementById('filtro-pedido-estado').value;
+  const url = `/api/pedidos${est ? '?estado='+est : ''}`;
+  const pedidos = await fetch(url).then(r => r.json());
+  const colores = { pendiente: '#e67e22', facturado: '#25d366', cancelado: '#e74c3c' };
+  const etiquetas = { pendiente: '⏳ Pendiente', facturado: '✅ Facturado', cancelado: '❌ Cancelado' };
+  document.getElementById('tabla-pedidos').innerHTML = pedidos.length === 0
+    ? '<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">No hay pedidos</td></tr>'
+    : pedidos.map(p => {
+        const resumen = p.productos.map(i => `${i.nombre} x${i.cantidad}`).join(', ');
+        const color = colores[p.estado] || '#888';
+        const etiq  = etiquetas[p.estado] || p.estado;
+        return `<tr>
+          <td><strong>#${p.id}</strong></td>
+          <td>${p.nombre_cliente || '—'}</td>
+          <td style="font-size:11px;color:#888">${p.numero.replace('@c.us','')}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${resumen}">${resumen}</td>
+          <td><strong>RD$${Number(p.total).toLocaleString('es-DO')}</strong></td>
+          <td><span style="color:${color};font-weight:700;font-size:12px">${etiq}</span></td>
+          <td style="font-size:11px;color:#888">${p.created_at?.slice(0,16) || ''}</td>
+          <td><button class="btn btn-blue" style="padding:4px 10px;font-size:11px" onclick='verPedido(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Ver</button></td>
+        </tr>`;
+      }).join('');
+}
+
+function verPedido(p) {
+  pedidoActual = p;
+  document.getElementById('mp-id').textContent      = `#${p.id}`;
+  document.getElementById('mp-cliente').textContent = p.nombre_cliente || '—';
+  document.getElementById('mp-numero').textContent  = p.numero.replace('@c.us','');
+  document.getElementById('mp-fecha').textContent   = p.created_at || '—';
+  document.getElementById('mp-notas').value         = p.notas || '';
+  document.getElementById('mp-total').textContent   = `RD$${Number(p.total).toLocaleString('es-DO')}`;
+  document.getElementById('mp-productos').innerHTML = p.productos.map(i => `
+    <tr>
+      <td>${i.nombre}</td>
+      <td>${i.cantidad}</td>
+      <td>RD$${Number(i.precio).toLocaleString('es-DO')}</td>
+      <td><strong>RD$${Number(i.precio * i.cantidad).toLocaleString('es-DO')}</strong></td>
+    </tr>`).join('');
+  document.getElementById('modal-pedido-bg').classList.add('show');
+}
+
+function cerrarModalPedido() {
+  document.getElementById('modal-pedido-bg').classList.remove('show');
+  pedidoActual = null;
+}
+
+async function cambiarEstadoPedido(nuevoEstado) {
+  if (!pedidoActual) return;
+  const notas = document.getElementById('mp-notas').value;
+  await fetch(`/api/pedidos/${pedidoActual.id}/estado`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estado: nuevoEstado, notas }),
+  });
+  cerrarModalPedido();
+  cargarPedidos();
+  cargarStatsPedidos();
+}
+
+// ─── Aprendizaje ──────────────────────────────────────────────────────────────
+let prodAprendizajeSeleccionado = null;
+
+async function cargarAprendizaje() {
+  const items = await fetch('/api/aprendizaje').then(r => r.json());
+  document.getElementById('tabla-aprendizaje').innerHTML = items.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px">Aún no hay sinónimos aprendidos. ¡Empieza enseñándole al bot!</td></tr>'
+    : items.map(a => `
+      <tr>
+        <td><strong style="color:#0088cc">"${a.patron}"</strong></td>
+        <td>${a.producto_nombre}</td>
+        <td style="text-align:center"><span class="badge badge-green">${a.veces_usada}x</span></td>
+        <td style="font-size:11px;color:#888">${a.created_at?.slice(0,10) || ''}</td>
+        <td><button class="btn btn-red" style="padding:3px 8px;font-size:11px" onclick="eliminarAprendizaje(${a.id})">🗑</button></td>
+      </tr>`).join('');
+
+  // Búsquedas exitosas recientes
+  const stats = await fetch('/api/estadisticas').then(r => r.json());
+  const exitosas = await fetch('/api/productos?buscar=&tipo=&disponible=').then(r => r.json()).catch(() => []);
+  // Obtener últimas exitosas de estadísticas
+  cargarEjemplosExitosos();
+}
+
+async function cargarEjemplosExitosos() {
+  // Simulamos mostrando las aprendidas más usadas como referencia
+  const items = await fetch('/api/aprendizaje').then(r => r.json());
+  const usadas = items.filter(i => i.veces_usada > 0).sort((a,b) => b.veces_usada - a.veces_usada).slice(0,10);
+  const el = document.getElementById('lista-exitosas');
+  if (usadas.length === 0) {
+    el.innerHTML = '<p style="color:#888;text-align:center;padding:20px">Los sinónimos que uses aparecerán aquí con su frecuencia de uso.</p>';
+    return;
+  }
+  el.innerHTML = `<table><thead><tr><th>Patrón</th><th>Producto</th><th>Usos</th></tr></thead><tbody>
+    ${usadas.map(u => `<tr><td>"${u.patron}"</td><td>${u.producto_nombre}</td><td><strong>${u.veces_usada}</strong></td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function abrirModalAprendizaje(patronInicial = '') {
+  prodAprendizajeSeleccionado = null;
+  document.getElementById('ap-patron').value = patronInicial;
+  document.getElementById('ap-buscar-prod').value = '';
+  document.getElementById('ap-resultados').style.display = 'none';
+  document.getElementById('ap-resultados').innerHTML = '';
+  document.getElementById('ap-seleccionado').style.display = 'none';
+  document.getElementById('ap-producto-id').value = '';
+  document.getElementById('modal-aprendizaje-bg').classList.add('show');
+  setTimeout(() => document.getElementById('ap-patron').focus(), 100);
+}
+
+function cerrarModalAprendizaje() {
+  document.getElementById('modal-aprendizaje-bg').classList.remove('show');
+}
+
+function ensenarBot(mensaje) {
+  abrirModalAprendizaje(mensaje);
+}
+
+let buscarTimeout;
+async function buscarProdAprendizaje() {
+  clearTimeout(buscarTimeout);
+  buscarTimeout = setTimeout(async () => {
+    const q = document.getElementById('ap-buscar-prod').value.trim();
+    if (q.length < 2) { document.getElementById('ap-resultados').style.display = 'none'; return; }
+    const prods = await fetch(`/api/productos?buscar=${encodeURIComponent(q)}`).then(r => r.json());
+    const el = document.getElementById('ap-resultados');
+    if (prods.length === 0) {
+      el.innerHTML = '<p style="padding:12px;color:#888;font-size:13px">No se encontraron productos.</p>';
+    } else {
+      el.innerHTML = prods.slice(0,8).map(p => `
+        <div onclick="seleccionarProdAprendizaje(${p.id},'${p.nombre.replace(/'/g,"\\'")}',${p.precio})"
+          style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px"
+          onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
+          <strong>${p.nombre}</strong>
+          <span style="color:#25d366;font-size:12px;margin-left:8px">RD$${Number(p.precio).toLocaleString('es-DO')}</span>
+        </div>`).join('');
+    }
+    el.style.display = 'block';
+  }, 300);
+}
+
+function seleccionarProdAprendizaje(id, nombre, precio) {
+  prodAprendizajeSeleccionado = { id, nombre, precio };
+  document.getElementById('ap-producto-id').value = id;
+  document.getElementById('ap-buscar-prod').value = nombre;
+  document.getElementById('ap-resultados').style.display = 'none';
+  const sel = document.getElementById('ap-seleccionado');
+  sel.innerHTML = `✅ Seleccionado: <strong>${nombre}</strong> — RD$${Number(precio).toLocaleString('es-DO')}`;
+  sel.style.display = 'block';
+}
+
+async function guardarAprendizaje() {
+  const patron = document.getElementById('ap-patron').value.trim();
+  if (!patron) { alert('Escribe el patrón que usa el cliente'); return; }
+  if (!prodAprendizajeSeleccionado) { alert('Selecciona un producto de la lista'); return; }
+  await fetch('/api/aprendizaje', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patron, producto_nombre: prodAprendizajeSeleccionado.nombre, producto_id: prodAprendizajeSeleccionado.id }),
+  });
+  cerrarModalAprendizaje();
+  cargarAprendizaje();
+  alert(`✅ Bot aprendido: "${patron}" → ${prodAprendizajeSeleccionado.nombre}`);
+}
+
+async function eliminarAprendizaje(id) {
+  if (!confirm('¿Eliminar este sinónimo?')) return;
+  await fetch(`/api/aprendizaje/${id}`, { method: 'DELETE' });
+  cargarAprendizaje();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+cargarEstadisticas();
+verificarEstadoBot();
+cargarStatsPedidos();
+setInterval(cargarEstadisticas, 30000);
+setInterval(verificarEstadoBot, 8000);
+setInterval(cargarStatsPedidos, 20000);
+</script>
+</body>
+</html>
