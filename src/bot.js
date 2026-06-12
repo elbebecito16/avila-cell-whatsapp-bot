@@ -93,11 +93,28 @@ function formatearReparacion(r) {
 }
 
 // ── Cliente WhatsApp ───────────────────────────────────────────────────────
+// Permite usar el Chrome del sistema solo si existe; si no, deja que
+// whatsapp-web.js use su Chromium incluido (evita errores de version).
+const fs = require('fs');
+const CHROME_PATHS = [
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+];
+const chromeDelSistema = CHROME_PATHS.find((p) => { try { return fs.existsSync(p); } catch { return false; } });
+
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: './session' }),
+  takeoverOnConflict: true,
+  takeoverTimeoutMs: 10000,
+  // Fija la version de WhatsApp Web para evitar el error
+  // "Execution context was destroyed" cuando WhatsApp actualiza su pagina.
+  webVersionCache: {
+    type: 'remote',
+    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1023204620.html',
+  },
   puppeteer: {
     headless: true,
-    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    ...(chromeDelSistema ? { executablePath: chromeDelSistema } : {}),
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   },
 });
