@@ -27,8 +27,9 @@ RUN npm install --omit=dev
 
 COPY . .
 
-# La sesión de WhatsApp se guarda aquí; monta un volumen persistente en /app/session
-VOLUME ["/app/session"]
+# La sesión de WhatsApp se guarda en /app/session.
+# En Railway la persistencia se configura con un "Volume" montado en /app/session
+# (no se usa la instrucción VOLUME de Docker, que Railway no soporta).
 
 EXPOSE 3001
 CMD ["node", "index.js"]
