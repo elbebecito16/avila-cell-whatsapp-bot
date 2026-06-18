@@ -100,7 +100,10 @@ const CHROME_PATHS = [
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
 ];
-const chromeDelSistema = CHROME_PATHS.find((p) => { try { return fs.existsSync(p); } catch { return false; } });
+// En la nube (Docker) se inyecta PUPPETEER_EXECUTABLE_PATH apuntando al Chromium
+// del sistema; en Windows local se autodetecta Chrome; si no, usa el incluido.
+const chromeDelSistema = process.env.PUPPETEER_EXECUTABLE_PATH
+  || CHROME_PATHS.find((p) => { try { return fs.existsSync(p); } catch { return false; } });
 
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: './session' }),

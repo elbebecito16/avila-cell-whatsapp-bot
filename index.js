@@ -1,7 +1,7 @@
 const client = require('./src/bot');
 const { iniciarPanel, setWhatsappClient } = require('./src/panel');
 
-iniciarPanel(3001);
+iniciarPanel(process.env.PORT || 3001);
 setWhatsappClient(client); // Permite que el panel envíe mensajes WA
 
 // Inicializar con reintentos automáticos si falla la conexión

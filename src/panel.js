@@ -260,9 +260,10 @@ app.post('/api/notificar', async (req, res) => {
   try {
     const { telefono, mensaje, api_key } = req.body;
 
-    // Validar API key
+    // Validar API key: prioriza la variable de entorno (deploy en la nube),
+    // con fallback a la guardada en SQLite (config local).
     const keyRow = await db.get("SELECT valor FROM configuracion WHERE clave='bot_api_key'");
-    const keyEsperada = keyRow?.valor;
+    const keyEsperada = process.env.BOT_API_KEY || keyRow?.valor;
     if (keyEsperada && api_key !== keyEsperada) {
       return res.status(401).json({ error: 'API key inválida' });
     }
@@ -303,8 +304,8 @@ app.get('/api/notificaciones/stats', async (req, res) => {
   res.json({ total_enviadas: parseInt(row?.valor || 0) });
 });
 
-function iniciarPanel(puerto = 3001) {
-  app.listen(puerto, () => console.log(`📊 Panel admin: http://localhost:${puerto}`));
+function iniciarPanel(puerto = process.env.PORT || 3001) {
+  app.listen(puerto, '0.0.0.0', () => console.log(`📊 Panel admin escuchando en puerto ${puerto}`));
 }
 
 module.exports = { iniciarPanel, setWhatsappClient };

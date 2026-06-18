@@ -1,0 +1,10 @@
+node_modules
+session
+uploads
+data/*.sqlite-journal
+*.log
+*-log.txt
+*-err.txt
+npm-log.txt
+test-*.txt
+.git
