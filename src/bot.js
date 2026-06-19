@@ -161,6 +161,7 @@ client.on('disconnected', (r) => {
 client.on('message', async (msg) => {
   try {
     if (msg.from.includes('@g.us')) return; // ignorar grupos
+    if (msg.from === 'status@broadcast' || msg.isStatus || msg.broadcast) return; // ignorar estados/broadcast
     if (msg.fromMe) return;
     if (msg.type !== 'chat') return;
 
