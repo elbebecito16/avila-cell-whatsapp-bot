@@ -109,10 +109,11 @@ const client = new Client({
   authStrategy: new LocalAuth({ dataPath: './session' }),
   takeoverOnConflict: true,
   takeoverTimeoutMs: 10000,
-  webVersionCache: {
-    type: 'remote',
-    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1041754475-alpha.html',
-  },
+  // Sin pin remoto: dejamos que whatsapp-web.js use su versión web probada
+  // (1.34.7 → 2.3000.1017054665). Forzar una versión "-alpha" más nueva
+  // rompe la inyección de window.Store y cuelga toda llamada a la página
+  // (Runtime.callFunctionOn timed out), por lo que el bot deja de responder.
+  // Si en el futuro WhatsApp obliga a actualizar, sube primero whatsapp-web.js.
   puppeteer: {
     headless: true,
     protocolTimeout: 120_000,
