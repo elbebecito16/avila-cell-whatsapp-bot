@@ -109,6 +109,10 @@ const client = new Client({
   authStrategy: new LocalAuth({ dataPath: './session' }),
   takeoverOnConflict: true,
   takeoverTimeoutMs: 10000,
+  webVersionCache: {
+    type: 'remote',
+    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1041754475-alpha.html',
+  },
   puppeteer: {
     headless: true,
     protocolTimeout: 120_000,
