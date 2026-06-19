@@ -20,6 +20,19 @@ function limpiarLocksChromium(dir = './session') {
   }
 }
 
+// Reset de sesión bajo demanda: si RESET_SESSION=1, borramos la sesión guardada
+// para forzar un QR nuevo (relogin limpio). Útil cuando la sesión queda
+// "fantasma" (conectada pero sin sincronizar mensajes). Tras escanear el QR,
+// quita la variable en Railway para no borrar la sesión en cada deploy.
+if (process.env.RESET_SESSION === '1') {
+  try {
+    fs.rmSync('./session', { recursive: true, force: true });
+    console.log('♻️  RESET_SESSION=1 → sesión borrada. Se generará un QR nuevo.');
+  } catch (err) {
+    console.error('No se pudo borrar la sesión:', err.message);
+  }
+}
+
 limpiarLocksChromium();
 
 const client = require('./src/bot');
