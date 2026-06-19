@@ -277,29 +277,10 @@ app.post('/api/notificar', async (req, res) => {
     }
 
     // Formatear número al estilo WA: 18095550000@c.us
+    // Envío directo sin getNumberId: esa validación se cuelga (Timeout validando
+    // número) cuando el Store de WA Web no responde y bloquea las facturas.
     const num = telefono.replace(/\D/g, '');
-    const numNormalizado = num.startsWith('1') ? num : `1${num}`;
-
-    // Validar que el número EXISTA en WhatsApp ANTES de enviar. Si no existe,
-    // sendMessage cuelga la página de WA Web (Runtime.callFunctionOn timed out)
-    // y como wweb.js usa una sola página, contamina los reply() entrantes y el
-    // bot deja de responder el menú. getNumberId es una consulta liviana al
-    // Store y resuelve rápido; un Promise.race la corta si la página tarda.
-    let numberId;
-    try {
-      numberId = await Promise.race([
-        _whatsappClient.getNumberId(numNormalizado),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout validando número')), 15000)),
-      ]);
-    } catch (err) {
-      console.error(`Error validando número ${numNormalizado}:`, err.message);
-      return res.status(502).json({ error: 'No se pudo validar el número en WhatsApp' });
-    }
-    if (!numberId) {
-      console.log(`🚫 [NOTIFICACION] ${numNormalizado} no tiene WhatsApp`);
-      return res.status(422).json({ error: 'El número no tiene WhatsApp', telefono: numNormalizado });
-    }
-    const chatId = numberId._serialized;
+    const chatId = num.startsWith('1') ? `${num}@c.us` : `1${num}@c.us`;
 
     await Promise.race([
       _whatsappClient.sendMessage(chatId, mensaje),
