@@ -109,12 +109,6 @@ const client = new Client({
   authStrategy: new LocalAuth({ dataPath: './session' }),
   takeoverOnConflict: true,
   takeoverTimeoutMs: 10000,
-  // Fija la version de WhatsApp Web para evitar el error
-  // "Execution context was destroyed" cuando WhatsApp actualiza su pagina.
-  webVersionCache: {
-    type: 'remote',
-    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1023204620.html',
-  },
   puppeteer: {
     headless: true,
     protocolTimeout: 120_000,
