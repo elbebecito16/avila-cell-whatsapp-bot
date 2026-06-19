@@ -280,18 +280,9 @@ app.post('/api/notificar', async (req, res) => {
     const num = telefono.replace(/\D/g, '');
     const chatId = num.startsWith('1') ? `${num}@c.us` : `1${num}@c.us`;
 
-    // Validar que el número existe en WhatsApp antes de enviar
-    const numeroValido = await Promise.race([
-      _whatsappClient.getNumberId(chatId),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout validando número en WhatsApp')), 15000)),
-    ]);
-    if (!numeroValido) {
-      return res.status(400).json({ error: `El número ${num} no tiene WhatsApp activo` });
-    }
-
     await Promise.race([
       _whatsappClient.sendMessage(chatId, mensaje),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout enviando mensaje')), 30000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout enviando mensaje, el número no tiene WhatsApp o el bot está reconectando')), 30000)),
     ]);
     console.log(`📨 [NOTIFICACION] Enviado a ${chatId}: ${mensaje.substring(0, 60)}...`);
 
