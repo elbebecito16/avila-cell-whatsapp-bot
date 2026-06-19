@@ -117,6 +117,7 @@ const client = new Client({
   },
   puppeteer: {
     headless: true,
+    protocolTimeout: 120_000,
     ...(chromeDelSistema ? { executablePath: chromeDelSistema } : {}),
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   },
