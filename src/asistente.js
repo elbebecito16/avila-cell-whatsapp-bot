@@ -59,8 +59,13 @@ const tools = [
     type: 'function',
     function: {
       name: 'mis_reparaciones',
-      description: 'Lista las reparaciones registradas a nombre del cliente que escribe (por su número). Úsalo si pregunta por "mi equipo/mi reparación" sin dar número de orden.',
-      parameters: { type: 'object', properties: {} },
+      description: 'Lista las reparaciones registradas por número de teléfono. Si el cliente te da un teléfono (ej. "8297301557"), pásalo en "telefono". Si no da ninguno, se usa el número con el que escribe. Úsalo cuando pregunte por su equipo sin número de orden.',
+      parameters: {
+        type: 'object',
+        properties: {
+          telefono: { type: 'string', description: 'Teléfono del cliente si lo proporcionó (solo dígitos). Opcional.' },
+        },
+      },
     },
   },
   {
@@ -112,7 +117,8 @@ async function ejecutarTool(nombre, args, ctx) {
       };
     }
     if (nombre === 'mis_reparaciones') {
-      const ords = await reparacionesPorTelefono(ctx.numero);
+      const tel = (args.telefono && args.telefono.replace(/\D/g, '')) || ctx.numero;
+      const ords = await reparacionesPorTelefono(tel);
       return { reparaciones: ords.map(r => ({ numero: r.numero, equipo: `${r.marca} ${r.modelo}`, estado: r.estado })) };
     }
     if (nombre === 'info_negocio') {
