@@ -39,9 +39,12 @@ const PALABRAS_MARCA = [
 
 // Palabras de relleno que no aportan al modelo
 const PALABRAS_RELLENO = [
-  'precio', 'cuanto', 'cuánto', 'cuesta', 'tiene', 'tienes', 'hay', 'stock',
-  'necesito', 'quiero', 'para', 'de', 'la', 'el', 'un', 'una', 'me', 'su',
-  'unidad', 'orig', 'original', 'kit', 'completo', 'completa', 'con', 'sin',
+  'precio', 'cuanto', 'cuánto', 'cuesta', 'vale', 'tiene', 'tienen', 'tienes', 'tengo',
+  'hay', 'stock', 'disponible', 'necesito', 'quiero', 'busco', 'dame', 'vende', 'venden',
+  'consigues', 'consiguen', 'manejan', 'tendran', 'tendrán', 'queda', 'quedan',
+  'para', 'de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'me', 'mi', 'su',
+  'unidad', 'orig', 'original', 'kit', 'completo', 'completa', 'con', 'sin', 'por', 'favor',
+  'hola', 'buenas', 'klk', 'saludos', 'algun', 'alguna', 'algún', 'ese', 'esa', 'este', 'esta',
 ];
 
 const CALIFICADORES = ['pro', 'max', 'plus', 'mini', 'ultra', 'lite', 'edge', 'prime', 'note', 'go', 'se', 'xl', 'neo', 'fe'];
