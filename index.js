@@ -1,3 +1,4 @@
+require('dotenv').config(); // carga CRM_URL, BOT_API_KEY, etc. desde .env
 const fs = require('fs');
 const path = require('path');
 
