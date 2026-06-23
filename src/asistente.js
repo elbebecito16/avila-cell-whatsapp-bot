@@ -31,7 +31,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'buscar_precio',
-      description: 'Busca repuestos/piezas en el inventario real y devuelve sus precios. Úsalo SIEMPRE que el cliente pregunte por un precio, disponibilidad o pieza (ej. "pantalla iphone 13", "bateria a51"). Nunca inventes precios.',
+      description: 'Busca productos en el inventario real del sistema (repuestos, accesorios, equipos) y devuelve precio y stock. Úsalo SIEMPRE que el cliente pregunte por un precio, disponibilidad o producto (ej. "iphone 12", "cargador tipo c", "bateria"). Nunca inventes precios ni disponibilidad.',
       parameters: {
         type: 'object',
         properties: {
@@ -98,11 +98,14 @@ async function ejecutarTool(nombre, args, ctx) {
     if (nombre === 'buscar_precio') {
       const { encontrados } = await buscarProductos(args.consulta || '');
       if (!encontrados || encontrados.length === 0) {
-        return { encontrados: [], nota: 'No se encontró esa pieza en el inventario.' };
+        return { encontrados: [], nota: 'No se encontró ese producto en el inventario.' };
       }
       return {
         encontrados: encontrados.slice(0, 8).map(p => ({
-          nombre: p.nombre, precio: fmtPrecio(p.precio), calidad: p.calidad || 'Estándar',
+          nombre: p.nombre,
+          precio: fmtPrecio(p.precio),
+          stock: p.stock,
+          disponible: Number(p.stock) > 0,
         })),
       };
     }

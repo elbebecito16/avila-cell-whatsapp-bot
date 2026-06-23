@@ -1,6 +1,5 @@
-const Fuse = require('fuse.js');
 const db = require('./database');
-const { interpretarBusqueda } = require('./ia');
+const { buscarEnInventarioCRM } = require('./crm');
 
 const VARIANTES_MODELO = {
   'iphone once': 'iphone 11', 'iphone diez': 'iphone 10',
@@ -105,118 +104,24 @@ async function buscarEnAprendidas(textoNorm) {
 }
 
 async function buscarProductos(mensajeCliente) {
-  const textoNorm     = normalizarTexto(mensajeCliente);
-  const piezaDetectada = detectarPieza(textoNorm);
-  const marcaDetectada = detectarMarca(textoNorm);
-
-  // ── CAPA 0: Sinónimos aprendidos (máxima prioridad) ───────────────────────
-  const aprendido = await buscarEnAprendidas(textoNorm);
-  if (aprendido) return { encontrados: aprendido, pieza: piezaDetectada, viaAprendizaje: true };
-
-  // ── 1. Filtrar candidatos por SQL (pieza + marca si se detectaron) ─────────
-  let sql = 'SELECT * FROM productos WHERE 1=1';
-  const params = [];
-  if (piezaDetectada) { sql += ' AND tipo_pieza = ?'; params.push(piezaDetectada); }
-  if (marcaDetectada) { sql += ' AND marca = ?';      params.push(marcaDetectada); }
-
-  let candidatos = await db.all(sql, params);
-
-  // Si no hay candidatos con marca, ampliar a solo pieza
-  if (candidatos.length === 0 && marcaDetectada) {
-    let sql2 = 'SELECT * FROM productos WHERE 1=1';
-    const p2 = [];
-    if (piezaDetectada) { sql2 += ' AND tipo_pieza = ?'; p2.push(piezaDetectada); }
-    candidatos = await db.all(sql2, p2);
-  }
-
-  if (candidatos.length === 0) return { encontrados: [], pieza: piezaDetectada };
-
-  // ── 2. Extraer tokens de búsqueda limpios ────────────────────────────────
+  // El inventario REAL vive en el shop (Supabase/Netlify), no en la BD local.
+  // Limpiamos la consulta (quitamos relleno y sinónimos de pieza redundantes) y
+  // delegamos al endpoint /api/bot/inventario, que matchea por todas las palabras.
+  const textoNorm = normalizarTexto(mensajeCliente);
   const tokens = textoNorm.split(' ')
     .filter(p => p.length >= 2)
-    .filter(p => !Object.values(SINONIMOS_PIEZA).flat().includes(p))
-    .filter(p => !PALABRAS_RELLENO.includes(p))
-    .filter(p => !PALABRAS_MARCA.includes(p));
+    .filter(p => !PALABRAS_RELLENO.includes(p));
+  const consulta = tokens.join(' ').trim() || textoNorm;
 
-  const numerosRequeridos  = tokens.filter(p => /\d/.test(p));         // ej: "13", "a60", "a51"
-  const palabrasTexto      = tokens.filter(p => !/\d/.test(p));
-  const calificadoresQuery = palabrasTexto.filter(p => CALIFICADORES.includes(p));
-  const palabrasGenerales  = palabrasTexto.filter(p => !CALIFICADORES.includes(p));
-
-  // ── 3. Filtro estricto por palabras ──────────────────────────────────────
-  const porPalabras = candidatos.filter(prod => {
-    const campo = `${prod.nombre} ${prod.modelo}`.toLowerCase();
-
-    // TODOS los números de modelo deben aparecer en el nombre del producto
-    const cumpleNumeros       = numerosRequeridos.every(n => campo.includes(n));
-    // TODOS los calificadores (pro, max, plus…) deben aparecer
-    const cumpleCalificadores = calificadoresQuery.every(c => campo.includes(c));
-    // Al menos una palabra general (marca/tipo extra) debe aparecer, si las hay
-    const cumpleGeneral       = palabrasGenerales.length === 0 || palabrasGenerales.some(w => campo.includes(w));
-
-    return cumpleNumeros && cumpleCalificadores && cumpleGeneral;
-  });
-
-  // Si encontró resultados exactos, retornarlos
-  if (porPalabras.length > 0)
-    return { encontrados: porPalabras.slice(0, 10), pieza: piezaDetectada };
-
-  // ── 4. Sin coincidencia exacta → intentar con DeepSeek ───────────────────
-  console.log(`🤖 Sin resultados exactos para "${mensajeCliente}", consultando DeepSeek...`);
-  const ia = await interpretarBusqueda(mensajeCliente);
-
-  if (ia && ia.confianza !== 'baja') {
-    // Segunda búsqueda con los datos que DeepSeek extrajo
-    let sql2 = 'SELECT * FROM productos WHERE 1=1';
-    const p2 = [];
-
-    if (ia.tipo_pieza) { sql2 += ' AND tipo_pieza = ?'; p2.push(ia.tipo_pieza); }
-    if (ia.marca)      { sql2 += ' AND marca = ?';      p2.push(ia.marca); }
-
-    let candidatos2 = await db.all(sql2, p2);
-
-    // Si no encontró con marca, ampliar sin marca
-    if (candidatos2.length === 0 && ia.marca) {
-      const sql3 = sql2.replace(' AND marca = ?', '');
-      const p3   = p2.filter(x => x !== ia.marca);
-      candidatos2 = await db.all(sql3, p3);
-    }
-
-    if (candidatos2.length > 0 && ia.terminos?.length > 0) {
-      const terminos = ia.terminos.map(t => t.toLowerCase());
-      // Separar números de modelo de palabras generales
-      const numerosIA   = terminos.filter(t => /\d/.test(t));
-      const generalesIA = terminos.filter(t => !/\d/.test(t) && !['pantalla','bateria','tapa','camara','pin','flex','display','lcd'].includes(t));
-
-      const porIA = candidatos2.filter(prod => {
-        const campo = `${prod.nombre} ${prod.modelo}`.toLowerCase();
-        // TODOS los números de modelo deben coincidir (igual que búsqueda normal)
-        const cumpleNumeros  = numerosIA.length === 0 || numerosIA.every(n => campo.includes(n));
-        // Al menos una palabra general si las hay
-        const cumpleGeneral  = generalesIA.length === 0 || generalesIA.some(g => campo.includes(g));
-        return cumpleNumeros && cumpleGeneral;
-      });
-
-      if (porIA.length > 0) {
-        console.log(`✅ DeepSeek encontró ${porIA.length} producto(s)`);
-        return { encontrados: porIA.slice(0, 10), pieza: ia.tipo_pieza || piezaDetectada, viaIA: true };
-      }
-    }
-  }
-
-  // ── 5. Fuse como último recurso SOLO sin número de modelo ─────────────────
-  if (numerosRequeridos.length > 0) {
-    return { encontrados: [], pieza: piezaDetectada };
-  }
-
-  const fuse = new Fuse(candidatos, {
-    keys: [{ name: 'nombre', weight: 0.7 }, { name: 'modelo', weight: 0.3 }],
-    threshold: 0.3,
-    includeScore: true,
-    minMatchCharLength: 3,
-  });
-  const resultados = fuse.search(textoNorm).map(r => r.item).slice(0, 10);
-  return { encontrados: resultados, pieza: piezaDetectada };
+  const items = await buscarEnInventarioCRM(consulta);
+  const encontrados = (items || []).map(p => ({
+    nombre:  p.nombre,
+    precio:  p.precio_venta,
+    codigo:  p.codigo,
+    stock:   p.stock,
+    calidad: '', // el inventario del shop no maneja variantes de calidad
+  }));
+  return { encontrados };
 }
 
 async function registrarConsultaNoEncontrada(mensaje, numero) {
