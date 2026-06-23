@@ -19,7 +19,8 @@ function obtenerSesion(numero) {
 function crearSesion(numero) {
   const s = {
     numero,
-    estado: 'MENU',
+    estado: 'IA', // modo conversacional natural por defecto; 'MENU' es respaldo
+
     carrito: [],
     ultimaBusqueda: [],   // últimos productos encontrados para elegir por número
     ultimaActividad: Date.now(),

@@ -9,6 +9,7 @@ const { obtenerSesion, crearSesion, actualizarSesion, eliminarSesion } = require
 const estado  = require('./estado-bot');
 const { consultarReparacion, reparacionesPorTelefono } = require('./crm');
 const { textoMenuFAQ, responderFAQ } = require('./faq');
+const asistente = require('./asistente');
 
 // ── Cache de configuración ─────────────────────────────────────────────────
 let configCache = {
@@ -200,23 +201,60 @@ client.on('message', async (msg) => {
     }
 
     // ── Obtener o crear sesión ────────────────────────────────────────────
-    let sesion = obtenerSesion(numero);
+    let sesion = obtenerSesion(numero) || crearSesion(numero);
+    actualizarSesion(numero, {}); // actualiza timestamp
 
-    // El menú se envía UNA sola vez por sesión (al crearla, dura 10 min) para no
-    // fatigar el chat. Un saludo dentro de la sesión NO lo reenvía; solo se
-    // vuelve a mostrar si el cliente lo pide explícitamente con "menu"/"inicio".
-    const pidioMenuExplicito = ['menu', 'menú', 'inicio', 'start'].includes(t);
-
-    if (!sesion || pidioMenuExplicito) {
-      sesion = crearSesion(numero);
+    // Comando: mostrar el menú numerado clásico (respaldo)
+    if (['menu', 'menú', 'inicio', 'start'].includes(t)) {
+      actualizarSesion(numero, { estado: 'MENU' });
       await msg.reply(textoMenuPrincipal(nombreCliente));
-      console.log(`📋 Menú enviado a ${nombreCliente} (${numero})`);
       return;
     }
 
-    // ── Enrutar según estado actual ───────────────────────────────────────
-    actualizarSesion(numero, {}); // actualiza timestamp
+    // Comando: hablar con un vendedor humano
+    if (['vendedor', 'humano', 'persona', 'agente', 'asesor'].includes(t) || t === '0') {
+      actualizarSesion(numero, { estado: 'ESPERA_VENDEDOR' });
+      await msg.reply(`👨‍💼 Te paso con un vendedor, te atiende enseguida.\n\n_Escribe *bot* para volver al asistente automático._`);
+      console.log(`🔔 [VENDEDOR REQUERIDO] ${nombreCliente} (${numero})`);
+      return;
+    }
 
+    // En espera de vendedor: el bot calla salvo que pidan volver al asistente
+    if (sesion.estado === 'ESPERA_VENDEDOR') {
+      if (['bot', 'asistente', 'automatico', 'automático'].includes(t)) {
+        actualizarSesion(numero, { estado: 'IA' });
+        await msg.reply('🤖 Listo, sigo yo. ¿En qué te ayudo? 😊');
+        return;
+      }
+      console.log(`💬 [VENDEDOR] ${nombreCliente}: ${texto}`);
+      return; // un humano atiende; el bot no responde
+    }
+
+    // ── Modo IA (por defecto): asistente conversacional natural ───────────
+    if (!['MENU', 'CONSULTA', 'CARRITO', 'REPARACION', 'FAQ'].includes(sesion.estado)) {
+      const r = await asistente.responder(numero, nombreCliente, texto);
+      if (r && r.texto) {
+        await msg.reply(r.texto);
+        if (r.escalar) {
+          actualizarSesion(numero, { estado: 'ESPERA_VENDEDOR' });
+          console.log(`🔔 [VENDEDOR-IA] ${nombreCliente}: ${r.motivo}`);
+        }
+        console.log(`🤖 IA [${nombreCliente}]: ${texto.substring(0, 50)}`);
+      } else {
+        // Fallback si DeepSeek falla (sin saldo / error): intentar precio directo;
+        // si no hay match, ofrecer menú/vendedor sin asumir que buscaba producto.
+        const { encontrados } = await buscarProductos(texto);
+        if (encontrados.length > 0) {
+          await msg.reply(construirRespuesta(encontrados, texto).texto);
+        } else {
+          await msg.reply(`Disculpa, no te entendí bien 🙏\n\nEscribe *menu* para ver las opciones, o *vendedor* para hablar con una persona.`);
+          await registrarConsultaNoEncontrada(texto, numero);
+        }
+      }
+      return;
+    }
+
+    // ── Enrutar según estado del menú clásico (respaldo) ──────────────────
     switch (sesion.estado) {
 
       // ── Estado: MENU — esperando elección ────────────────────────────────
