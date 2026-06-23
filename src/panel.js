@@ -12,11 +12,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// CORS — permite que el CRM (localhost:3000) consulte la API del bot
+// CORS — el panel del shop (Netlify, vía túnel ngrok) y el CRM local consultan
+// la API del bot. Se permite cualquier origen porque el endpoint sensible
+// (/api/notificar) está protegido por api_key; el resto es admin de solo lectura.
+// Se incluye 'ngrok-skip-browser-warning' para que el túnel no inyecte su HTML.
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,ngrok-skip-browser-warning');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
