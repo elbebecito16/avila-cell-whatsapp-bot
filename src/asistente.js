@@ -5,7 +5,7 @@
 const OpenAI = require('openai');
 const { nombreNegocio, get } = require('./config-negocio');
 const { buscarProductos } = require('./buscador');
-const { consultarReparacion, reparacionesPorTelefono } = require('./crm');
+const { consultarReparacion, reparacionesPorTelefono, listarPorCategoriaCRM } = require('./crm');
 const { getFAQItems } = require('./faq');
 
 const deepseek = new OpenAI({
@@ -38,6 +38,20 @@ const tools = [
           consulta: { type: 'string', description: 'La pieza y modelo a buscar, ej. "pantalla iphone 13 pro" o "bateria samsung a51".' },
         },
         required: ['consulta'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_productos',
+      description: 'Lista los productos disponibles de una categoría/tipo, ordenados por precio. ÚSALO cuando el cliente pregunte de forma GENERAL o vaga, sin un modelo específico: "qué celulares tienes", "algo económico", "muéstrame teléfonos", "qué accesorios hay". No pidas una palabra clave: usa esta herramienta y muéstrale opciones.',
+      parameters: {
+        type: 'object',
+        properties: {
+          categoria: { type: 'string', description: 'Categoría o tipo en palabra simple: "celulares", "accesorios", "fundas", "cargadores", "audifonos".' },
+        },
+        required: ['categoria'],
       },
     },
   },
@@ -109,6 +123,20 @@ async function ejecutarTool(nombre, args, ctx) {
         })),
       };
     }
+    if (nombre === 'listar_productos') {
+      const items = await listarPorCategoriaCRM(args.categoria || '');
+      if (!items || items.length === 0) {
+        return { productos: [], nota: 'No hay productos en esa categoría ahora mismo.' };
+      }
+      return {
+        productos: items.slice(0, 15).map(p => ({
+          nombre: p.nombre,
+          precio: fmtPrecio(p.precio_venta),
+          stock: p.stock,
+          disponible: Number(p.stock) > 0,
+        })),
+      };
+    }
     if (nombre === 'estado_reparacion') {
       const rep = await consultarReparacion(args.numero_orden || '');
       if (!rep) return { encontrada: false, nota: 'No existe esa orden.' };
@@ -151,7 +179,9 @@ TONO: dominicano, cálido y breve, como un vendedor amable por WhatsApp. Respues
 
 REGLAS:
 - NUNCA inventes precios, disponibilidad ni estados. Usa SIEMPRE las herramientas para traer datos reales del inventario y del sistema.
-- Si preguntan por un precio/pieza → usa buscar_precio. Si no aparece, dilo con honestidad y ofrece avisar a un vendedor.
+- Si preguntan por un MODELO específico → usa buscar_precio. Prueba variantes si no aparece (ej. solo el modelo "c62", o la marca "oukitel") antes de decir que no hay.
+- Si el pedido es GENERAL o vago ("qué celulares tienes", "algo económico", "el más barato", "muéstrame teléfonos/accesorios") → usa listar_productos con la categoría y MUESTRA opciones reales (para "económico", ordena del más barato). NUNCA le pidas al cliente una "palabra clave"; tú haces la búsqueda.
+- Solo di que no hay algo DESPUÉS de buscar de verdad con las herramientas. Si no aparece, sé honesto y ofrece avisar a un vendedor.
 - Para horarios, sucursales, garantía o pagos → usa info_negocio.
 - Para estado de una reparación → estado_reparacion (si dan número) o mis_reparaciones.
 - Cuando el cliente quiera COMPRAR/cerrar pedido, coordinar entrega o pago, o pida hablar con una persona → usa escalar_a_vendedor y dile que un vendedor le continúa enseguida. 😊

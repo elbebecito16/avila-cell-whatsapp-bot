@@ -50,4 +50,13 @@ async function buscarEnInventarioCRM(texto) {
   return Array.isArray(data) ? data : [];
 }
 
-module.exports = { consultarReparacion, reparacionesPorTelefono, buscarEnInventarioCRM };
+/**
+ * Lista productos de una categoría (ej. "celulares", "accesorios"). Para pedidos
+ * vagos donde el cliente no da un modelo específico.
+ */
+async function listarPorCategoriaCRM(categoria) {
+  const data = await fetch2(`${CRM_URL}/api/bot/inventario?categoria=${encodeURIComponent(categoria)}`);
+  return Array.isArray(data) ? data : [];
+}
+
+module.exports = { consultarReparacion, reparacionesPorTelefono, buscarEnInventarioCRM, listarPorCategoriaCRM };

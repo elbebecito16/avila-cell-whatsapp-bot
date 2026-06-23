@@ -1,6 +1,19 @@
 require('dotenv').config(); // carga CRM_URL, BOT_API_KEY, etc. desde .env
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
+
+// Mata Chrome huérfano del bot dejado por un cierre forzado (PM2/crash en
+// Windows no manda señal, así que el cierre no es ordenado). Sin esto, el Chrome
+// viejo retiene el perfil y el nuevo arranque se cuelga. No toca otros Chrome.
+function matarChromeHuerfano() {
+  if (process.platform !== 'win32') return;
+  try {
+    execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${path.join(__dirname, 'limpiar-chrome.ps1')}"`,
+      { stdio: 'ignore', timeout: 20000 });
+    console.log('🧹 Chrome huérfano del bot limpiado (si había).');
+  } catch { /* sin powershell o sin huérfanos */ }
+}
 
 // Al persistir la sesión en un volumen, un contenedor que muere sin cerrar
 // Chromium deja archivos de bloqueo (SingletonLock/Socket/Cookie). El siguiente
@@ -34,6 +47,7 @@ if (process.env.RESET_SESSION === '1') {
   }
 }
 
+matarChromeHuerfano(); // recupera de cierres forzados antes de limpiar locks
 limpiarLocksChromium();
 
 const client = require('./src/bot');
@@ -59,11 +73,29 @@ async function iniciarBot(intento = 1) {
       console.error(`⚠️  Sin internet. Reintentando en ${espera} segundos... (intento ${intento})`);
       setTimeout(() => iniciarBot(intento + 1), espera * 1000);
     } else {
-      // Error diferente (auth, sesión corrupta, etc.) — mostrar y no reintentar
-      console.error('❌ Error al iniciar el bot:', err.message);
+      // Error diferente (auth, sesión corrupta, Chrome trabado). Mostramos el
+      // detalle completo y salimos para que PM2 reinicie (que limpiará Chrome).
+      console.error('❌ Error al iniciar el bot:', err?.message || err);
+      if (err?.stack) console.error(err.stack);
       process.exit(1);
     }
   }
 }
 
 iniciarBot();
+
+// Cierre ordenado bajo PM2 en Windows: Windows no tiene señales POSIX, así que
+// PM2 avisa el apagado con un MENSAJE IPC 'shutdown' (no SIGINT). Al recibirlo
+// cerramos el cliente de WhatsApp (y Chromium) limpio, evitando corromper la
+// sesión en cada reinicio. También atendemos SIGINT/SIGTERM por si acaso.
+let cerrando = false;
+async function cerrarLimpio(origen) {
+  if (cerrando) return;
+  cerrando = true;
+  console.log(`⏹️  ${origen}: cerrando WhatsApp limpio...`);
+  try { await client.destroy(); } catch (e) { console.error('destroy:', e?.message); }
+  process.exit(0);
+}
+process.on('message', (msg) => { if (msg === 'shutdown') cerrarLimpio('shutdown'); });
+process.on('SIGINT',  () => cerrarLimpio('SIGINT'));
+process.on('SIGTERM', () => cerrarLimpio('SIGTERM'));
