@@ -1,7 +1,7 @@
 // Manejo de estado de conversación por número
 // Estados: MENU | CONSULTA | CARRITO | ESPERA_VENDEDOR
 
-const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
 
 const sesiones = new Map();
 

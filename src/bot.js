@@ -202,10 +202,12 @@ client.on('message', async (msg) => {
     // ── Obtener o crear sesión ────────────────────────────────────────────
     let sesion = obtenerSesion(numero);
 
-    // Palabras clave que siempre muestran el menú
-    const pidioMenu = ['menu', 'menú', 'inicio', 'start', 'hola', 'buenas', 'buenos dias', 'hi'].includes(t);
+    // El menú se envía UNA sola vez por sesión (al crearla, dura 10 min) para no
+    // fatigar el chat. Un saludo dentro de la sesión NO lo reenvía; solo se
+    // vuelve a mostrar si el cliente lo pide explícitamente con "menu"/"inicio".
+    const pidioMenuExplicito = ['menu', 'menú', 'inicio', 'start'].includes(t);
 
-    if (!sesion || pidioMenu) {
+    if (!sesion || pidioMenuExplicito) {
       sesion = crearSesion(numero);
       await msg.reply(textoMenuPrincipal(nombreCliente));
       console.log(`📋 Menú enviado a ${nombreCliente} (${numero})`);
