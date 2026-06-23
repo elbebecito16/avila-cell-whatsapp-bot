@@ -1,3 +1,5 @@
+const { nombreNegocio } = require('./config-negocio');
+
 function formatearPrecio(precio) {
   return `RD$${Number(precio).toLocaleString('es-DO')}`;
 }
@@ -26,10 +28,11 @@ function emojiPorCalidad(calidad) {
 }
 
 function construirRespuesta(encontrados, mensajeOriginal) {
+  const negocio = nombreNegocio();
   if (encontrados.length === 0) {
     return {
       texto:
-        `Gracias por escribirnos a *Avila Cell* 🙏\n\n` +
+        `Gracias por escribirnos a *${negocio}* 🙏\n\n` +
         `No encontré ese producto en este momento.\n` +
         `Un vendedor revisará su consulta y le responderá en breve. 😊`,
       encontrado: false,
@@ -42,7 +45,7 @@ function construirRespuesta(encontrados, mensajeOriginal) {
     return {
       texto:
         `📱 *${p.nombre.toUpperCase()}*\n` +
-        `🔥 Disponible en *Avila Cell* 🔥\n\n` +
+        `🔥 Disponible en *${negocio}* 🔥\n\n` +
         `${emoji} ${p.calidad} — *${formatearPrecio(p.precio)}*\n\n` +
         `Un vendedor le atenderá para confirmar su pedido. 😊`,
       encontrado: true,
@@ -78,9 +81,9 @@ function construirRespuesta(encontrados, mensajeOriginal) {
   return {
     texto:
       `📱 *${titulo}*\n` +
-      `🔥 Disponibles en *Avila Cell* 🔥\n\n` +
+      `🔥 Disponibles en *${negocio}* 🔥\n\n` +
       `${cuerpo}\n\n` +
-      `📍 *Avila Cell*\n` +
+      `📍 *${negocio}*\n` +
       `🗨️ Díganos cuál desea y un vendedor le atenderá 😊`,
     encontrado: true,
     producto: encontrados.map(p => p.nombre).join(', '),

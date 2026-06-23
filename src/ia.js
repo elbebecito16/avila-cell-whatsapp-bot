@@ -1,5 +1,6 @@
 const OpenAI = require('openai');
 const db = require('./database');
+const { nombreNegocio } = require('./config-negocio');
 
 // Cliente DeepSeek (compatible con API de OpenAI)
 const deepseek = new OpenAI({
@@ -44,7 +45,7 @@ async function refrescarCatalogo() {
 async function interpretarBusqueda(mensajeCliente) {
   await refrescarCatalogo();
 
-  const prompt = `Eres un asistente para una tienda de repuestos de celulares llamada Avila Cell en República Dominicana.
+  const prompt = `Eres un asistente para una tienda de repuestos de celulares llamada ${nombreNegocio()} en República Dominicana.
 
 El cliente escribió: "${mensajeCliente}"
 
@@ -63,7 +64,7 @@ Ejemplos generales:
 - "pantalla itel a669" → modelo:"A669", terminos:["a669","itel"]
 - "bateria samsung a71" → modelo:"A71", terminos:["a71","samsung"]
 - "pantalla tcl 10se" → modelo:"10SE", terminos:["10se","tcl"]
-${cacheEjemplos.length > 0 ? `\nBúsquedas reales exitosas de clientes de Avila Cell (aprende de estas):\n${cacheEjemplos.join('\n')}` : ''}
+${cacheEjemplos.length > 0 ? `\nBúsquedas reales exitosas de clientes de ${nombreNegocio()} (aprende de estas):\n${cacheEjemplos.join('\n')}` : ''}
 
 Responde SOLO con JSON válido, sin texto adicional:
 {
